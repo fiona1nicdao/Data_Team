@@ -1,0 +1,256 @@
+DROP TABLE IF EXISTS AppUser CASCADE;
+DROP TABLE IF EXISTS Gender CASCADE;
+DROP TABLE IF EXISTS Languages CASCADE;
+DROP TABLE IF EXISTS Country CASCADE;
+DROP TABLE IF EXISTS UserProfile CASCADE;
+DROP TABLE IF EXISTS Allergies CASCADE;
+DROP TABLE IF EXISTS DietaryPref CASCADE;
+DROP TABLE IF EXISTS Cuisine CASCADE;
+DROP TABLE IF EXISTS User_User_Relationship CASCADE;
+DROP TYPE IF EXISTS Status CASCADE;
+
+
+--ENUMS
+
+CREATE TYPE Status as ENUM('ACTIVE','SUSPENDED','DEACTIVATED','BANNED');
+
+
+--USER
+
+CREATE TABLE AppUser (
+UserID varchar(30) PRIMARY KEY,
+Username varchar(30),
+Email varchar(50),
+EmailVerified boolean,
+PasswordHash varchar(100),
+AutoProvider varchar(30),
+OAuthToken varchar(50),
+RegistrationDate timestamp,
+AccountStatus Status,
+LastLogin timestamp,
+IPAddress varchar(30)
+);
+
+--GENDER
+
+CREATE TABLE Gender(
+GenderID varchar(30) PRIMARY KEY
+);
+
+--LANGUAGE
+
+CREATE TABLE Languages(
+LanguageID varchar(5) PRIMARY KEY,
+LanguageDescription varchar(150)
+);
+
+--COUNTRY
+
+CREATE TABLE Country(
+CountryID varchar(5) PRIMARY KEY,
+CountryFlagURL varchar(200)
+);
+
+
+--USERPROFILE
+
+CREATE TABLE UserProfile (
+ProfileID varchar(30) PRIMARY KEY,
+UserID varchar(30),          
+FirstName varchar(30),           
+LastName varchar(30),          
+DOB date,
+Gender varchar(30),
+ProfilePicURL varchar(200),
+Bio varchar(250),
+Weight decimal,
+Height decimal,
+Languages varchar(50),
+Country varchar(50),
+City varchar(50),
+Zipcode varchar(25),
+FOREIGN KEY (UserID)
+	REFERENCES AppUser(UserID),
+FOREIGN KEY (Gender)
+	REFERENCES Gender(GenderID),
+FOREIGN KEY (Languages)
+	REFERENCES Languages(LanguageID),
+FOREIGN KEY (Country)
+	REFERENCES Country(CountryID)
+);
+
+--ALLERGIES
+
+CREATE TABLE Allergies(
+AllergyID varchar(10) PRIMARY KEY,
+UserID varchar(30),
+AllergyName varchar(30),
+FOREIGN KEY (UserID)
+	REFERENCES AppUser(UserID)
+);
+
+
+--DIETARY PREFERENCES
+
+CREATE TABLE DietaryPref(
+DietID varchar(30) PRIMARY KEY,
+UserID varchar(30),
+DietName varchar(30),
+FOREIGN KEY (UserID)
+	REFERENCES AppUser(UserID)
+);
+
+--CUISINE
+
+CREATE TABLE Cuisine(
+CuisineID varchar(30) PRIMARY KEY,
+UserID varchar(30),
+CuisineName varchar(30),
+FOREIGN KEY (UserID)
+	REFERENCES AppUser(UserID)
+);
+
+--USER_USER RELATIONSHIP
+
+CREATE TABLE User_User_Relationship(
+FollowID varchar(50) PRIMARY KEY,
+FollowerID varchar(30),
+FollowingID varchar(30),
+FollowDate timestamp,
+FOREIGN KEY (FollowerID)
+	REFERENCES AppUser(UserID),
+FOREIGN KEY (FollowingID)
+	REFERENCES AppUser(UserID)
+);
+
+
+---------------------------------------------------------------------------
+
+
+DROP TABLE IF EXISTS Measurement_Unit CASCADE;
+DROP TABLE IF EXISTS Nutrient CASCADE;
+
+-- MEASUREMENT UNIT
+
+CREATE TABLE Measurement_Unit (
+    Unit_ID INT PRIMARY KEY,  -- No SERIAL, manual key management
+    Unit_Name VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- NUTRIENT
+
+CREATE TABLE Nutrient (
+    Nutrient_ID INT PRIMARY KEY,  -- No SERIAL, manual key management
+    Ingredient_Name VARCHAR(255) NOT NULL,
+    Serving_Size NUMERIC(10,2) NOT NULL,
+    Unit_ID INT NOT NULL,  
+    Calories NUMERIC(10,2),
+    Protein NUMERIC(10,2),
+    Carbohydrates NUMERIC(10,2),
+    Sugar NUMERIC(10,2),
+    Fiber NUMERIC(10,2),
+    Fat NUMERIC(10,2),
+    Saturated_Fat NUMERIC(10,2),
+    Monounsaturated_Fat NUMERIC(10,2),
+    Polyunsaturated_Fat NUMERIC(10,2),
+    Cholesterol NUMERIC(10,2),
+    Sodium NUMERIC(10,2),
+    Potassium NUMERIC(10,2),
+    Calcium NUMERIC(10,2),
+    Iron NUMERIC(10,2),
+    Vitamin_A NUMERIC(10,2),
+    Vitamin_C NUMERIC(10,2),
+    Vitamin_D NUMERIC(10,2),
+    Vitamin_E NUMERIC(10,2),
+    Vitamin_K NUMERIC(10,2),
+    Magnesium NUMERIC(10,2),
+    Phosphorus NUMERIC(10,2),
+    Zinc NUMERIC(10,2),
+    Water_Content NUMERIC(10,2),
+    FOREIGN KEY (Unit_ID) REFERENCES Measurement_Unit (Unit_ID)
+);
+
+---------------------------------------------------------------------------
+
+
+DROP TABLE IF EXISTS recipe CASCADE;
+DROP TABLE IF EXISTS recipe_ingredient CASCADE;
+
+-- RECIPE
+
+CREATE TABLE recipe (
+    recipe_id SERIAL PRIMARY KEY,
+    UserID VARCHAR(30) NOT NULL REFERENCES appuser(UserID),
+    title VARCHAR NOT NULL,
+    description TEXT,
+    cuisine_id VARCHAR(30) REFERENCES Cuisine(CuisineID),
+    difficulty_level VARCHAR CHECK (difficulty_level IN ('Easy', 'Medium', 'Hard')),
+    servings INTEGER,
+    --course_id INTEGER REFERENCES course(course_id),
+    directions TEXT NOT NULL,
+    notes TEXT,
+    time_to_prepare INTEGER,
+    time_to_cook INTEGER,
+    total_time INTEGER,  -- Processed: time_to_prepare + time_to_cook
+    photo_url TEXT,
+    video_url TEXT,
+    tags JSON,  -- Processed: Keywords like "Gluten-Free", "Spicy"
+    nutrition_facts JSON,  -- Processed: Macronutrients & micronutrients per serving
+    calorie_count INTEGER,  -- Processed
+    dietary_restrictions JSON,  -- Processed: List of dietary restrictions
+    visibility VARCHAR CHECK (visibility IN ('Public', 'Private', 'Friends-Only')),
+    status VARCHAR CHECK (status IN ('Draft', 'Published', 'Archived')),
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    average_rating DECIMAL(3,2),  -- Processed
+    review_count INTEGER,  -- Processed
+    like_count INTEGER,  -- Processed
+    save_count INTEGER,  -- Processed
+    number_of_views INTEGER,  -- Processed
+    external_source TEXT  -- Optional: Source URL for the recipe
+);
+
+-- Recipe Ingredient
+
+CREATE TABLE recipe_ingredient (
+    ingredient_id SERIAL PRIMARY KEY,
+    recipe_id INTEGER NOT NULL REFERENCES recipe(recipe_id),
+    ingredient_name VARCHAR NOT NULL,
+    quantity DECIMAL(10,2),
+    measurement_unit VARCHAR,  -- Optionally a ForeignKey if units table exists
+    substitutions JSON,  -- Processed: Alternative ingredients
+    nutrient_id INTEGER REFERENCES Nutrient(Nutrient_ID)
+);
+
+---------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS ingredients_dietary_tags CASCADE;
+DROP TABLE IF EXISTS ingredients_allergens CASCADE;
+
+-- INGREDIENT DIETARY TAGS
+
+CREATE TABLE ingredient_dietary_tags (
+    id SERIAL PRIMARY KEY,
+    ingredient_id INT NOT NULL,
+    dietary_tag VARCHAR(255) NOT NULL,
+    FOREIGN KEY (ingredient_id) REFERENCES recipe_ingredient(ingredient_id) ON DELETE CASCADE
+);
+
+-- INGREDIENT ALLERGENS
+
+CREATE TABLE ingredient_allergens (
+    id SERIAL PRIMARY KEY,
+    ingredient_id INT NOT NULL,
+    allergen VARCHAR(255) NOT NULL,
+    FOREIGN KEY (ingredient_id) REFERENCES recipe_ingredient(ingredient_id) ON DELETE CASCADE
+);
+
+
+---------------------------------------------------------------------------
+
+
+
+
+
+
+
